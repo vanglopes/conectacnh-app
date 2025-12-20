@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Perfil - ConectaCNH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style> .font-serif-custom { font-family: 'Georgia', serif; } </style>
+</head>
+<body class="bg-slate-50 text-slate-900 pb-24">
+
+    <div class="bg-white p-4 pt-6 shadow-sm sticky top-0 z-10 flex items-center gap-4">
+        <a href="home.html" class="text-slate-400 hover:text-slate-600">
+            <i class="fa-solid fa-arrow-left text-xl"></i>
+        </a>
+        <h1 class="text-xl font-bold text-slate-900">Meu Perfil</h1>
+    </div>
+
+    <div class="p-6 flex flex-col items-center justify-center mt-4">
+        <div class="relative">
+            <div class="w-24 h-24 rounded-full bg-slate-200 border-4 border-white shadow-lg overflow-hidden">
+                <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" class="w-full h-full object-cover">
+            </div>
+        </div>
+        <h2 id="nome-perfil" class="mt-4 text-xl font-bold text-slate-800">Carregando...</h2>
+        <p id="email-perfil" class="text-sm text-slate-400">...</p>
+        <span class="mt-2 px-3 py-1 bg-cyan-100 text-cyan-700 rounded-full text-xs font-bold uppercase tracking-wide">Aluno</span>
+    </div>
+
+    <div class="px-4 space-y-3 mt-4">
+        
+        <button onclick="abrirModal('modal-dados')" class="w-full bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between group active:scale-[0.98] transition-transform">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                    <i class="fa-regular fa-id-card"></i>
+                </div>
+                <div class="text-left">
+                    <h3 class="font-bold text-slate-700 text-sm">Meus Dados</h3>
+                    <p class="text-[10px] text-slate-400">CPF, Endereço e Telefone</p>
+                </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+        </button>
+
+        <button onclick="abrirModal('modal-seguranca')" class="w-full bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between group active:scale-[0.98] transition-transform">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <div class="text-left">
+                    <h3 class="font-bold text-slate-700 text-sm">Segurança</h3>
+                    <p class="text-[10px] text-slate-400">Alterar senha</p>
+                </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+        </button>
+
+        <button onclick="fazerLogout()" class="w-full mt-6 bg-red-50 text-red-500 font-bold py-3.5 rounded-xl border border-red-100 shadow-sm transition-colors hover:bg-red-100">
+            Sair da Conta
+        </button>
+    </div>
+
+    <div id="modal-dados" class="fixed inset-0 bg-black/50 hidden z-50 flex items-end sm:items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl animate-[slideUp_0.3s_ease-out]">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-bold text-lg text-slate-800">Editar Dados</h3>
+                <button onclick="fecharModal('modal-dados')" class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Nome</label>
+                    <input type="text" id="input-nome" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 outline-none focus:border-cyan-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">CPF</label>
+                        <input type="text" id="input-cpf" oninput="mascaraCPF(this)" maxlength="14" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 outline-none focus:border-cyan-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Telefone</label>
+                        <input type="text" id="input-telefone" oninput="mascaraTelefone(this)" maxlength="15" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 outline-none focus:border-cyan-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Endereço</label>
+                    <input type="text" id="input-endereco" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 outline-none focus:border-cyan-500">
+                </div>
+                <button onclick="salvarDados()" id="btn-salvar" class="w-full bg-cyan-500 text-white font-bold py-3 rounded-xl mt-2">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 w-full bg-white border-t border-slate-100 py-3 px-6 flex justify-between items-center z-[100] max-w-md left-1/2 -translate-x-1/2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <a href="home.html" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 cursor-pointer w-16">
+            <i class="fa-solid fa-house text-xl"></i>
+            <span class="text-[10px]">Início</span>
+        </a>
+        <a href="meus_agendamentos.html" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 cursor-pointer w-16">
+            <i class="fa-regular fa-calendar text-xl"></i>
+            <span class="text-[10px]">Agenda</span>
+        </a>
+        <a href="perfil.html" class="flex flex-col items-center gap-1 text-cyan-600 cursor-pointer w-16">
+            <i class="fa-solid fa-user text-xl"></i>
+            <span class="text-[10px] font-bold">Perfil</span>
+        </a>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://gfazevzzvgafmlnmkgjo.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmYXpldnp6dmdhZm1sbm1rZ2pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDE3MjMsImV4cCI6MjA4MTUxNzcyM30.00SUzPZP0-YCxwaynA0Eu8lBM2O7E4Sp52lwLVACRSo';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let usuarioLogado = null;
+
+        window.onload = async function() {
+            const userStr = localStorage.getItem('usuario_logado');
+            if(!userStr) { window.location.href = 'index.html'; return; }
+            const tempUser = JSON.parse(userStr);
+
+            // Busca dados frescos da tabela USUARIOS (Genérica)
+            const { data: usuarioReal } = await supabaseClient.from('usuarios').select('*').eq('id', tempUser.id).single();
+            usuarioLogado = usuarioReal || tempUser;
+
+            document.getElementById('nome-perfil').innerText = usuarioLogado.nome;
+            document.getElementById('email-perfil').innerText = usuarioLogado.email;
+            document.getElementById('input-nome').value = usuarioLogado.nome;
+            document.getElementById('input-cpf').value = usuarioLogado.cpf || '';
+            document.getElementById('input-telefone').value = usuarioLogado.telefone || '';
+            document.getElementById('input-endereco').value = usuarioLogado.endereco || '';
+        };
+
+        function mascaraCPF(i) {
+            let v = i.value.replace(/\D/g, "");
+            v = v.replace(/(\d{3})(\d)/, "$1.$2");
+            v = v.replace(/(\d{3})(\d)/, "$1.$2");
+            v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+            i.value = v;
+        }
+        function mascaraTelefone(i) {
+            let v = i.value.replace(/\D/g, "");
+            v = v.replace(/^(\d{2})(\d)/g, "($1) $2");
+            v = v.replace(/(\d)(\d{4})$/, "$1-$2");
+            i.value = v;
+        }
+
+        async function salvarDados() {
+            const btn = document.getElementById('btn-salvar');
+            btn.innerHTML = 'Salvando...';
+            btn.disabled = true;
+
+            const updateData = {
+                nome: document.getElementById('input-nome').value,
+                cpf: document.getElementById('input-cpf').value,
+                telefone: document.getElementById('input-telefone').value,
+                endereco: document.getElementById('input-endereco').value
+            };
+
+            await supabaseClient.from('usuarios').update(updateData).eq('id', usuarioLogado.id);
+            alert("Dados atualizados!");
+            location.reload();
+        }
+
+        function fazerLogout() {
+            if(confirm("Sair da conta?")) {
+                localStorage.removeItem('usuario_logado');
+                window.location.href = 'index.html';
+            }
+        }
+        
+        function abrirModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function fecharModal(id) { document.getElementById(id).classList.add('hidden'); }
+    </script>
+</body>
+</html>

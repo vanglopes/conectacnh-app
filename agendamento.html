@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendar Aula - ConectaCNH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .font-serif-custom { font-family: 'Georgia', serif; }
+        
+        /* Estilo para data selecionada */
+        .selected-date { 
+            background-color: #06b6d4; 
+            color: white !important; 
+            font-weight: bold;
+            border-radius: 50%;
+        }
+        /* Estilo para data hoje */
+        .today-date {
+            border: 2px solid #06b6d4;
+            color: #06b6d4;
+            font-weight: bold;
+            border-radius: 50%;
+        }
+        /* Estilo para horário selecionado */
+        .selected-time { background-color: #06b6d4; color: white; border-color: #06b6d4; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 pb-28">
+
+    <div class="bg-white p-4 pt-6 shadow-sm sticky top-0 z-10 flex items-center gap-4">
+        <a href="javascript:history.back()" class="text-slate-400 hover:text-slate-600">
+            <i class="fa-solid fa-arrow-left text-xl"></i>
+        </a>
+        <h1 class="text-xl font-bold text-slate-900">Agendar Aula</h1>
+    </div>
+
+    <div class="p-4">
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-4 items-center">
+            <img id="img-instrutor" src="" class="w-16 h-16 rounded-full object-cover bg-slate-200">
+            <div>
+                <p class="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Instrutor</p>
+                <h2 id="nome-instrutor" class="font-bold text-lg leading-tight">Carregando...</h2>
+                <p id="preco-instrutor" class="text-cyan-600 font-bold text-sm mt-1">R$ -- / aula</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="px-4">
+        <div class="flex justify-between items-center mb-4 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+            <button onclick="mudarMes(-1)" class="text-slate-400 hover:text-cyan-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <h3 id="mes-ano-texto" class="font-bold text-slate-800 capitalize">--</h3>
+            <button onclick="mudarMes(1)" class="text-slate-400 hover:text-cyan-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-7 text-center mb-2">
+            <span class="text-xs text-slate-400 font-bold">Dom</span>
+            <span class="text-xs text-slate-400 font-bold">Seg</span>
+            <span class="text-xs text-slate-400 font-bold">Ter</span>
+            <span class="text-xs text-slate-400 font-bold">Qua</span>
+            <span class="text-xs text-slate-400 font-bold">Qui</span>
+            <span class="text-xs text-slate-400 font-bold">Sex</span>
+            <span class="text-xs text-slate-400 font-bold">Sáb</span>
+        </div>
+
+        <div id="grid-dias" class="grid grid-cols-7 gap-y-2 gap-x-1 text-center">
+            </div>
+    </div>
+
+    <div class="p-4 mt-2">
+        <h3 class="font-bold text-slate-800 mb-3">Horários Disponíveis</h3>
+        <div id="container-horarios" class="grid grid-cols-4 gap-3">
+            </div>
+        <p id="msg-selecione" class="text-center text-slate-400 text-sm mt-4 bg-slate-100 py-3 rounded-lg border border-slate-200 border-dashed">
+            <i class="fa-regular fa-calendar mr-1"></i> Selecione um dia no calendário acima.
+        </p>
+    </div>
+
+    <div class="fixed bottom-0 w-full bg-white border-t border-slate-100 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-50 max-w-md left-1/2 -translate-x-1/2">
+        <div class="flex justify-between items-center mb-3">
+            <div>
+                <p class="text-xs text-slate-400">Total a pagar</p>
+                <p id="total-pagar" class="text-xl font-bold text-slate-900">R$ 0,00</p>
+            </div>
+            <div class="text-right">
+                <p id="resumo-data" class="text-xs text-slate-500 font-medium">--/--</p>
+                <p id="resumo-hora" class="text-xs text-slate-500 font-medium">--:--</p>
+            </div>
+        </div>
+        <button onclick="confirmarAgendamento()" id="btn-confirmar" disabled class="w-full bg-slate-300 text-slate-500 font-bold py-3.5 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2 cursor-not-allowed">
+            Confirmar Agendamento
+        </button>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://gfazevzzvgafmlnmkgjo.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmYXpldnp6dmdhZm1sbm1rZ2pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDE3MjMsImV4cCI6MjA4MTUxNzcyM30.00SUzPZP0-YCxwaynA0Eu8lBM2O7E4Sp52lwLVACRSo';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Variáveis de Estado
+        let instrutorAtual = null;
+        let dataSelecionada = null; // Objeto Date completo
+        let horarioSelecionado = null; // String "HH:mm"
+        let usuarioLogado = null;
+        
+        // Controle do Mês Visualizado
+        let dataVisualizacao = new Date(); // Começa hoje
+
+        // 1. Inicialização
+        window.onload = async function() {
+            const userStr = localStorage.getItem('usuario_logado');
+            if(!userStr) {
+                alert("Você precisa estar logado para agendar.");
+                window.location.href = 'index.html';
+                return;
+            }
+            usuarioLogado = JSON.parse(userStr);
+
+            const params = new URLSearchParams(window.location.search);
+            const instrutorId = params.get('id');
+
+            if(!instrutorId) {
+                alert("Instrutor não identificado.");
+                window.history.back();
+                return;
+            }
+
+            await carregarInstrutor(instrutorId);
+            renderizarCalendario();
+        };
+
+        async function carregarInstrutor(id) {
+            const { data, error } = await supabaseClient.from('instrutores').select('*').eq('id', id).single();
+            if (error || !data) { alert("Erro ao carregar instrutor."); return; }
+            instrutorAtual = data;
+            document.getElementById('nome-instrutor').innerText = data.nome;
+            document.getElementById('preco-instrutor').innerText = `R$ ${data.preco_aula.toFixed(2)} / aula`;
+            document.getElementById('img-instrutor').src = data.foto_url;
+        }
+
+        // --- LÓGICA DO CALENDÁRIO MENSAL ---
+        
+        function mudarMes(delta) {
+            // Avança ou volta o mês da variável de visualização
+            dataVisualizacao.setMonth(dataVisualizacao.getMonth() + delta);
+            renderizarCalendario();
+        }
+
+        function renderizarCalendario() {
+            const grid = document.getElementById('grid-dias');
+            const textoMes = document.getElementById('mes-ano-texto');
+            
+            grid.innerHTML = ''; // Limpa
+
+            const ano = dataVisualizacao.getFullYear();
+            const mes = dataVisualizacao.getMonth(); // 0 a 11
+
+            // Atualiza Título (Ex: Dezembro 2025)
+            textoMes.innerText = dataVisualizacao.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+            // Pega o primeiro dia da semana do mês (0 = Domingo, 1 = Segunda...)
+            const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
+            // Pega quantos dias tem no mês
+            const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+
+            // Data de Hoje (sem horas) para comparar bloqueios
+            const hoje = new Date();
+            hoje.setHours(0,0,0,0);
+
+            // 1. Espaços vazios antes do dia 1
+            for(let i = 0; i < primeiroDiaSemana; i++) {
+                const vazio = document.createElement('div');
+                grid.appendChild(vazio);
+            }
+
+            // 2. Dias do Mês
+            for(let dia = 1; dia <= diasNoMes; dia++) {
+                const dataLoop = new Date(ano, mes, dia);
+                const isPassado = dataLoop < hoje;
+                const isHoje = dataLoop.getTime() === hoje.getTime();
+                
+                // Verifica se é o dia que o usuário já clicou
+                const isSelecionado = dataSelecionada && 
+                                      dataSelecionada.getDate() === dia && 
+                                      dataSelecionada.getMonth() === mes &&
+                                      dataSelecionada.getFullYear() === ano;
+
+                const btn = document.createElement('button');
+                btn.innerText = dia;
+                btn.className = "w-10 h-10 flex items-center justify-center rounded-full text-sm mx-auto transition-all ";
+
+                if (isPassado) {
+                    btn.classList.add('text-slate-300', 'cursor-not-allowed');
+                    btn.disabled = true;
+                } else {
+                    btn.classList.add('hover:bg-cyan-100', 'text-slate-700', 'font-medium');
+                    
+                    if (isHoje && !isSelecionado) {
+                        btn.classList.add('today-date');
+                    }
+                    if (isSelecionado) {
+                        btn.classList.add('selected-date');
+                    }
+
+                    btn.onclick = () => selecionarData(dataLoop);
+                }
+
+                grid.appendChild(btn);
+            }
+        }
+
+        function selecionarData(dataObj) {
+            dataSelecionada = dataObj;
+            horarioSelecionado = null; // Reseta horário ao trocar dia
+            
+            // Re-renderiza para atualizar a bolinha azul
+            renderizarCalendario();
+            
+            // Libera horários
+            gerarHorarios();
+            atualizarResumo();
+        }
+
+        // --- FIM LÓGICA CALENDÁRIO ---
+
+        function gerarHorarios() {
+            const container = document.getElementById('container-horarios');
+            document.getElementById('msg-selecione').style.display = 'none';
+            container.innerHTML = '';
+
+            const horarios = ["08:00", "09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
+
+            horarios.forEach(hora => {
+                const btn = document.createElement('button');
+                btn.className = "py-2 rounded-lg border border-slate-200 text-sm font-bold text-slate-600 hover:border-cyan-500 hover:text-cyan-600 transition-colors";
+                btn.innerText = hora;
+                btn.onclick = () => selecionarHorario(btn, hora);
+                container.appendChild(btn);
+            });
+        }
+
+        function selecionarHorario(elemento, hora) {
+            document.querySelectorAll('#container-horarios button').forEach(b => b.classList.remove('selected-time'));
+            elemento.classList.add('selected-time');
+            horarioSelecionado = hora;
+            atualizarResumo();
+        }
+
+        function atualizarResumo() {
+            const btn = document.getElementById('btn-confirmar');
+            const txtTotal = document.getElementById('total-pagar');
+            const txtData = document.getElementById('resumo-data');
+            const txtHora = document.getElementById('resumo-hora');
+
+            if (dataSelecionada && horarioSelecionado) {
+                btn.disabled = false;
+                btn.className = "w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2";
+                
+                txtTotal.innerText = `R$ ${instrutorAtual.preco_aula.toFixed(2)}`;
+                txtData.innerText = dataSelecionada.toLocaleDateString('pt-BR');
+                txtHora.innerText = horarioSelecionado;
+            } else {
+                btn.disabled = true;
+                btn.className = "w-full bg-slate-300 text-slate-500 font-bold py-3.5 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2 cursor-not-allowed";
+            }
+        }
+
+	async function confirmarAgendamento() {
+            if(!usuarioLogado || !instrutorAtual || !dataSelecionada || !horarioSelecionado) return;
+
+            const btn = document.getElementById('btn-confirmar');
+            const textoOriginal = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Verificando...';
+            btn.disabled = true;
+
+            const [hora, min] = horarioSelecionado.split(':');
+            const dataFinal = new Date(dataSelecionada);
+            dataFinal.setHours(parseInt(hora), parseInt(min), 0);
+
+            const novoAgendamento = {
+                aluno_id: usuarioLogado.id,
+                instrutor_id: instrutorAtual.id,
+                data_hora: dataFinal.toISOString(),
+                status: 'pendente',
+                valor_aula: instrutorAtual.preco_aula,
+                local_aula: instrutorAtual.endereco
+            };
+
+            const { error } = await supabaseClient.from('agendamentos').insert([novoAgendamento]);
+
+            if (error) {
+                // Código 23505 = VIOLAÇÃO DE UNICIDADE (Duplicado)
+                if (error.code === '23505') {
+                    alert("⚠️ Ops! Este horário já foi reservado.\n\nPor favor, escolha outro horário.");
+                } else {
+                    alert("Erro ao agendar: " + error.message);
+                }
+                btn.innerHTML = textoOriginal;
+                btn.disabled = false;
+            } else {
+                btn.className = "w-full bg-green-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2";
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Agendado!';
+                setTimeout(() => { window.location.href = 'meus_agendamentos.html'; }, 1500);
+            }
+        }
+    </script>
+</body>
+</html>

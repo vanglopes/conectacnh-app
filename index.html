@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrar - ConectaCNH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.font-serif-custom { font-family: 'Georgia', serif; }</style>
+</head>
+<body class="bg-slate-900 text-white flex flex-col items-center justify-center min-h-screen p-6 relative overflow-hidden">
+
+    <div class="absolute top-0 left-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl -ml-20 -mt-20 pointer-events-none"></div>
+
+    <div class="w-full max-w-sm z-10 text-center">
+        
+        <div class="mb-10">
+            <h1 class="text-4xl font-serif-custom tracking-wide">Conecta<span class="font-bold">CNH</span></h1>
+            <p class="text-slate-400 mt-2 text-sm">Agende sua aula com instrutores credenciados</p>
+        </div>
+
+        <div id="area-social" class="space-y-3 transition-all duration-300">
+            <button onclick="simularSocialLogin('google')" class="w-full bg-white text-slate-900 font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-3 hover:bg-slate-100 transition-colors">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5">
+                Continuar com Google
+            </button>
+
+            <button onclick="simularSocialLogin('apple')" class="w-full bg-black text-white border border-slate-700 font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-3 hover:bg-slate-900 transition-colors">
+                <i class="fa-brands fa-apple text-xl"></i>
+                Continuar com Apple
+            </button>
+
+            <button onclick="abrirFormEmail('aluno')" class="w-full bg-slate-800 text-white border border-slate-700 font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-3 hover:bg-slate-700 transition-colors">
+                <i class="fa-regular fa-envelope"></i>
+                Continuar com Email
+            </button>
+
+            <div class="pt-6 pb-2 relative flex items-center justify-center">
+                <div class="border-t border-slate-800 w-full absolute"></div>
+                <span class="bg-slate-900 px-3 text-xs text-slate-500 relative uppercase">Profissionais</span>
+            </div>
+
+            <button onclick="abrirFormEmail('instrutor')" class="text-cyan-400 font-bold text-sm hover:text-cyan-300 transition-colors">
+                Sou Instrutor / Autoescola
+            </button>
+        </div>
+
+        <div id="area-form" class="hidden space-y-4 text-left animate-fade-in">
+            <div class="flex items-center gap-2 mb-4">
+                <button onclick="voltarSocial()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-arrow-left"></i></button>
+                <h2 id="titulo-form" class="text-lg font-bold text-white">Acessar com E-mail</h2>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1 ml-1">E-mail</label>
+                <input type="email" id="email" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 text-white focus:border-cyan-500 outline-none transition-colors">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1 ml-1">Senha</label>
+                <input type="password" id="senha" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 text-white focus:border-cyan-500 outline-none transition-colors">
+            </div>
+
+            <button onclick="login()" id="btn-login" class="w-full bg-cyan-500 hover:bg-cyan-400 text-white font-bold py-3.5 rounded-xl shadow-lg mt-2 transition-colors">
+                Continuar
+            </button>
+        </div>
+
+    </div>
+
+    <p class="absolute bottom-6 text-center text-[10px] text-slate-600 px-6 leading-tight">
+        Ao continuar, você concorda com nossos <a href="#" class="underline">Termos de Serviço</a> e <a href="#" class="underline">Política de Privacidade</a>.
+    </p>
+
+    <script>
+        const SUPABASE_URL = 'https://gfazevzzvgafmlnmkgjo.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmYXpldnp6dmdhZm1sbm1rZ2pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDE3MjMsImV4cCI6MjA4MTUxNzcyM30.00SUzPZP0-YCxwaynA0Eu8lBM2O7E4Sp52lwLVACRSo';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let tipoAcesso = 'aluno'; 
+
+        function abrirFormEmail(tipo) {
+            tipoAcesso = tipo;
+            document.getElementById('area-social').classList.add('hidden');
+            document.getElementById('area-form').classList.remove('hidden');
+
+            const titulo = document.getElementById('titulo-form');
+            if(tipo === 'instrutor') {
+                titulo.innerText = "Login Instrutor";
+                titulo.className = "text-lg font-bold text-cyan-400";
+            } else {
+                titulo.innerText = "Acesso Aluno";
+                titulo.className = "text-lg font-bold text-white";
+            }
+        }
+
+        function voltarSocial() {
+            document.getElementById('area-social').classList.remove('hidden');
+            document.getElementById('area-form').classList.add('hidden');
+            document.getElementById('email').value = '';
+            document.getElementById('senha').value = '';
+        }
+
+        async function simularSocialLogin(provider) {
+            const emailSimulado = provider === 'google' ? 'usuario.google@gmail.com' : 'usuario.apple@icloud.com';
+            const nomeSimulado = provider === 'google' ? 'Usuário Google' : 'Usuário Apple';
+
+            const { data: user, error } = await supabaseClient
+                .from('usuarios')
+                .select('*')
+                .eq('email', emailSimulado)
+                .single();
+
+            if (user) {
+                loginSucesso(user);
+            } else {
+                if(confirm(`Conta não encontrada para ${emailSimulado}. Deseja cadastrar agora?`)) {
+                    window.location.href = `cadastro.html?tipo=aluno&email=${emailSimulado}&nome=${nomeSimulado}`;
+                }
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            const btn = document.getElementById('btn-login');
+
+            if (!email || !senha) { alert("Preencha todos os campos"); return; }
+
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Verificando...';
+            btn.disabled = true;
+
+            const { data: user, error } = await supabaseClient
+                .from('usuarios')
+                .select('*')
+                .eq('email', email)
+                .eq('senha', senha)
+                .single();
+
+            if (!user) {
+                // AQUI ESTAVA O PROBLEMA - CORRIGIDO PARA AMBOS OS CASOS
+                let msg = tipoAcesso === 'aluno' 
+                    ? "Aluno não encontrado." 
+                    : "Instrutor não encontrado.";
+                
+                if(confirm(`${msg} Deseja criar uma conta profissional agora?`)) {
+                    // Redireciona para cadastro já sabendo o tipo e o email
+                    window.location.href = `cadastro.html?tipo=${tipoAcesso}&email=${email}`;
+                } else {
+                    btn.innerText = "Continuar";
+                    btn.disabled = false;
+                }
+                return;
+            }
+
+            if (user.tipo !== tipoAcesso) {
+                alert(`Este e-mail pertence a uma conta de ${user.tipo.toUpperCase()}. Por favor, use a opção correta.`);
+                btn.innerText = "Continuar";
+                btn.disabled = false;
+                return;
+            }
+
+            if (tipoAcesso === 'instrutor') {
+                const { data: instrutor } = await supabaseClient
+                    .from('instrutores')
+                    .select('status')
+                    .eq('usuario_id', user.id)
+                    .single();
+
+                if (instrutor && instrutor.status !== 'ativo') {
+                    localStorage.setItem('usuario_logado', JSON.stringify(user));
+                    window.location.href = 'aguardando_aprovacao.html';
+                    return;
+                }
+            }
+
+            loginSucesso(user);
+        }
+
+        function loginSucesso(user) {
+            localStorage.setItem('usuario_logado', JSON.stringify(user));
+            if (user.tipo === 'instrutor') {
+                window.location.href = 'dashboard_instrutor.html';
+            } else {
+                window.location.href = 'home.html';
+            }
+        }
+    </script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then((reg) => console.log('App registrado!', reg.scope))
+        .catch((err) => console.log('Falha ao registrar App:', err));
+    });
+  }
+</script>
+</body>
+</html>

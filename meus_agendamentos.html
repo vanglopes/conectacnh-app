@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meus Agendamentos - ConectaCNH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style> .font-serif-custom { font-family: 'Georgia', serif; } </style>
+</head>
+<body class="bg-slate-50 text-slate-900 pb-24">
+
+    <div class="bg-white p-4 pt-6 shadow-sm sticky top-0 z-10 flex items-center justify-between">
+        <h1 class="text-xl font-bold text-slate-900">Meus Agendamentos</h1>
+        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+            <i class="fa-regular fa-calendar"></i>
+        </div>
+    </div>
+
+    <div id="lista-agendamentos" class="px-4 space-y-3 mt-4">
+        <div class="text-center py-10 opacity-50"><i class="fa-solid fa-spinner animate-spin text-2xl"></i></div>
+    </div>
+
+    <div id="modal-avaliacao" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-[slideUp_0.3s_ease-out]">
+            <div class="text-center">
+                <h3 class="font-bold text-xl text-slate-800 mb-1">Avaliar Aula</h3>
+                <p class="text-xs text-slate-400 mb-6">Como foi sua experiência com o instrutor?</p>
+                
+                <div class="flex justify-center gap-2 mb-6" id="container-estrelas">
+                    <i onclick="selecionarEstrela(1)" class="fa-solid fa-star text-3xl text-slate-200 cursor-pointer hover:scale-110 transition-transform" id="star-1"></i>
+                    <i onclick="selecionarEstrela(2)" class="fa-solid fa-star text-3xl text-slate-200 cursor-pointer hover:scale-110 transition-transform" id="star-2"></i>
+                    <i onclick="selecionarEstrela(3)" class="fa-solid fa-star text-3xl text-slate-200 cursor-pointer hover:scale-110 transition-transform" id="star-3"></i>
+                    <i onclick="selecionarEstrela(4)" class="fa-solid fa-star text-3xl text-slate-200 cursor-pointer hover:scale-110 transition-transform" id="star-4"></i>
+                    <i onclick="selecionarEstrela(5)" class="fa-solid fa-star text-3xl text-slate-200 cursor-pointer hover:scale-110 transition-transform" id="star-5"></i>
+                </div>
+
+                <textarea id="comentario" placeholder="Deixe um comentário (opcional)..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none mb-4 resize-none h-24"></textarea>
+
+                <div class="flex gap-3">
+                    <button onclick="fecharModal()" class="flex-1 py-3 rounded-xl border border-slate-200 text-slate-500 font-bold text-sm">Cancelar</button>
+                    <button onclick="enviarAvaliacao()" id="btn-enviar-av" class="flex-1 py-3 rounded-xl bg-cyan-500 text-white font-bold text-sm hover:bg-cyan-400 shadow-lg disabled:opacity-50">Enviar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 w-full bg-white border-t border-slate-100 py-3 px-6 flex justify-between items-center z-50 max-w-md left-1/2 -translate-x-1/2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <a href="home.html" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 cursor-pointer w-16">
+            <i class="fa-solid fa-house text-xl"></i><span class="text-[10px]">Início</span>
+        </a>
+        <a href="#" class="flex flex-col items-center gap-1 text-cyan-600 cursor-pointer w-16">
+            <i class="fa-solid fa-calendar-check text-xl"></i><span class="text-[10px] font-bold">Agenda</span>
+        </a>
+        <a href="perfil.html" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 cursor-pointer w-16">
+            <i class="fa-solid fa-user text-xl"></i><span class="text-[10px]">Perfil</span>
+        </a>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://gfazevzzvgafmlnmkgjo.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmYXpldnp6dmdhZm1sbm1rZ2pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDE3MjMsImV4cCI6MjA4MTUxNzcyM30.00SUzPZP0-YCxwaynA0Eu8lBM2O7E4Sp52lwLVACRSo';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        let notaSelecionada = 0;
+        let agendamentoAtualId = null;
+        let instrutorAtualId = null;
+
+        async function carregarMeusAgendamentos() {
+            const userStr = localStorage.getItem('usuario_logado');
+            if (!userStr) { window.location.href = 'index.html'; return; }
+            const usuario = JSON.parse(userStr);
+            const lista = document.getElementById('lista-agendamentos');
+
+            const { data: agendamentos, error } = await supabaseClient
+                .from('agendamentos')
+                .select('*, instrutores(id, nome, foto_url, usuarios(telefone))')
+                .eq('aluno_id', usuario.id) 
+                .order('data_hora', { ascending: true });
+
+            if (!agendamentos || agendamentos.length === 0) {
+                lista.innerHTML = `<div class="text-center py-10"><p class="text-slate-400 font-bold">Nenhum agendamento</p><a href="home.html" class="inline-block mt-4 bg-cyan-500 text-white px-6 py-2 rounded-full text-sm font-bold">Buscar Instrutor</a></div>`;
+                return;
+            }
+
+            lista.innerHTML = ''; 
+
+            agendamentos.forEach(item => {
+                const dataObj = new Date(item.data_hora);
+                const dia = dataObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+                const hora = dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                const instrutor = item.instrutores || { nome: 'Instrutor', id: 0 }; // ID padrão para evitar erro
+                const localAula = item.local_aula || 'Local a definir';
+                
+                let telInstrutor = null;
+                if(instrutor.usuarios && instrutor.usuarios.telefone) {
+                    telInstrutor = instrutor.usuarios.telefone;
+                }
+                
+                let btnZap = '';
+                if(telInstrutor) {
+                    const numLimpo = telInstrutor.replace(/\D/g, '');
+                    // event.stopPropagation() impede que o clique no zap abra o card
+                    btnZap = `<a href="https://wa.me/55${numLimpo}" target="_blank" onclick="event.stopPropagation()" class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center hover:bg-green-500 hover:text-white transition-colors ml-auto"><i class="fa-brands fa-whatsapp"></i></a>`;
+                }
+
+                let statusHTML = '';
+                
+                if (item.status === 'finalizada') {
+                    if (item.nota_aluno) {
+                        statusHTML = `<div class="mt-2 pt-2 border-t border-slate-50 flex justify-between items-center">
+                            <span class="text-[10px] text-slate-400 font-bold uppercase">Finalizada</span>
+                            <div class="text-orange-400 text-xs font-bold"><i class="fa-solid fa-star"></i> ${item.nota_aluno} Enviado</div>
+                        </div>`;
+                    } else {
+                        // event.stopPropagation() no botão de avaliar também
+                        statusHTML = `<div class="mt-3">
+                            <button onclick="event.stopPropagation(); abrirAvaliacao(${item.id}, ${instrutor.id})" class="w-full bg-orange-500 hover:bg-orange-400 text-white font-bold py-2 rounded-lg text-xs shadow-md transition-colors animate-pulse">
+                                <i class="fa-regular fa-star mr-1"></i> Avaliar Aula
+                            </button>
+                        </div>`;
+                    }
+                } else {
+                    let cor = item.status === 'confirmado' ? 'bg-green-100 text-green-700' : 
+                              item.status === 'recusado' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+                    statusHTML = `<div class="text-right mt-1"><span class="text-[10px] ${cor} px-2 py-0.5 rounded-full font-bold uppercase">${item.status}</span></div>`;
+                }
+
+                // AQUI ESTÁ A MÁGICA: onclick="verDetalhes(...)" no card inteiro
+                const card = `
+                <div onclick="verDetalhes(${instrutor.id})" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-2 cursor-pointer transition-transform active:scale-[0.98] hover:shadow-md">
+                    <div class="flex gap-4">
+                        <div class="flex flex-col items-center justify-center min-w-[3.5rem] h-14 bg-slate-50 rounded-xl border border-slate-100">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase">${dia.split(' ')[1]}</span>
+                            <span class="text-xl font-bold text-slate-800">${dia.split(' ')[0]}</span>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-bold text-slate-800 text-sm mb-1">${instrutor.nome}</h3>
+                                ${btnZap}
+                            </div>
+                            <p class="text-xs text-slate-500 mb-1 flex items-center gap-1"><i class="fa-regular fa-clock text-cyan-500"></i> ${hora} • Prática</p>
+                            <p class="text-[10px] text-slate-400 flex items-center gap-1"><i class="fa-solid fa-location-dot"></i> ${localAula}</p>
+                        </div>
+                    </div>
+                    ${statusHTML}
+                </div>`;
+                lista.innerHTML += card;
+            });
+        }
+
+        function verDetalhes(idInstrutor) {
+            if(idInstrutor) {
+                window.location.href = `detalhes.html?id=${idInstrutor}`;
+            }
+        }
+
+        // --- FUNÇÕES DE AVALIAÇÃO (Mantidas) ---
+        function abrirAvaliacao(idAgendamento, idInstrutor) {
+            agendamentoAtualId = idAgendamento;
+            instrutorAtualId = idInstrutor;
+            notaSelecionada = 0;
+            selecionarEstrela(0);
+            document.getElementById('comentario').value = '';
+            document.getElementById('modal-avaliacao').classList.remove('hidden');
+        }
+        function fecharModal() { document.getElementById('modal-avaliacao').classList.add('hidden'); }
+        function selecionarEstrela(n) {
+            notaSelecionada = n;
+            for(let i=1; i<=5; i++) {
+                const el = document.getElementById(`star-${i}`);
+                if (i <= n) el.className = "fa-solid fa-star text-3xl text-orange-400 cursor-pointer transition-transform transform scale-110";
+                else el.className = "fa-solid fa-star text-3xl text-slate-200 cursor-pointer transition-transform";
+            }
+        }
+        async function enviarAvaliacao() {
+            if(notaSelecionada === 0) return alert("Selecione pelo menos 1 estrela!");
+            const btn = document.getElementById('btn-enviar-av');
+            btn.innerHTML = 'Enviando...';
+            btn.disabled = true;
+            const comentario = document.getElementById('comentario').value;
+
+            const { error } = await supabaseClient.from('agendamentos').update({ nota_aluno: notaSelecionada, comentario_aluno: comentario }).eq('id', agendamentoAtualId);
+            if(!error) {
+                await atualizarReputacaoInstrutor(instrutorAtualId);
+                alert("Avaliação enviada!");
+                fecharModal();
+                carregarMeusAgendamentos();
+            } else { alert("Erro: " + error.message); }
+            btn.innerHTML = 'Enviar';
+            btn.disabled = false;
+        }
+
+        async function atualizarReputacaoInstrutor(idInstrutor) {
+             const { data: aulas } = await supabaseClient.from('agendamentos').select('nota_aluno').eq('instrutor_id', idInstrutor).not('nota_aluno', 'is', null);
+            if(aulas && aulas.length > 0) {
+                let soma = 0; aulas.forEach(a => soma += a.nota_aluno);
+                let media = soma / aulas.length;
+                await supabaseClient.from('instrutores').update({ nota: media, avaliacoes_count: aulas.length }).eq('id', idInstrutor);
+            }
+        }
+
+        carregarMeusAgendamentos();
+    </script>
+</body>
+</html>

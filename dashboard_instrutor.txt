@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Instrutor - ConectaCNH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style> .font-serif-custom { font-family: 'Georgia', serif; } </style>
+</head>
+<body class="bg-slate-50 text-slate-900 pb-24">
+
+    <div class="bg-slate-900 p-6 pt-8 pb-10 rounded-b-[2.5rem] shadow-xl relative overflow-hidden">
+        <div class="absolute top-[-20%] right-[-10%] w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl"></div>
+        
+        <div class="flex justify-between items-center relative z-10 mb-6">
+            <h1 id="nome-ola" class="text-xl font-bold text-white">Olá, Instrutor 👋</h1>
+            <div class="flex gap-2 bg-slate-800 p-1 rounded-lg">
+                <button onclick="mudarPeriodo('semanal')" id="btn-semanal" class="px-3 py-1.5 rounded-md text-[10px] font-bold transition-all bg-cyan-500 text-white shadow-lg">Semana</button>
+                <button onclick="mudarPeriodo('mensal')" id="btn-mensal" class="px-3 py-1.5 rounded-md text-[10px] font-bold transition-all text-slate-400 hover:text-white">Mês</button>
+            </div>
+        </div>
+
+        <div class="text-center relative z-10">
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Ganhos do Período</p>
+            <h2 id="txt-faturamento" class="text-4xl font-bold text-white tracking-tight">R$ 0,00</h2>
+        </div>
+
+        <div class="mt-6 relative h-32 w-full">
+            <canvas id="graficoFaturamento"></canvas>
+        </div>
+    </div>
+
+    <div class="px-6 -mt-6 relative z-10 grid grid-cols-2 gap-3">
+        <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100 text-center">
+            <span class="block text-lg font-bold text-slate-800" id="txt-total-aulas">0</span>
+            <span class="text-[10px] text-slate-400 uppercase font-bold">Aulas Confirmadas</span>
+        </div>
+        <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100 text-center">
+            <span class="block text-lg font-bold text-orange-500" id="txt-nota">5.0 <i class="fa-solid fa-star text-xs"></i></span>
+            <span class="text-[10px] text-slate-400 uppercase font-bold">Sua Nota</span>
+        </div>
+    </div>
+
+    <div class="px-6 mt-8">
+        <div class="flex justify-between items-end mb-4">
+            <h2 class="font-bold text-lg text-slate-800">Gerenciar Aulas</h2>
+            <button onclick="carregarDashboard()" class="text-xs text-cyan-600 font-bold hover:underline"><i class="fa-solid fa-rotate-right"></i> Atualizar</button>
+        </div>
+
+        <div id="lista-agenda" class="space-y-4">
+            <div class="text-center py-8 opacity-50">
+                <i class="fa-solid fa-spinner animate-spin text-2xl mb-2"></i>
+                <p class="text-xs">Carregando sua agenda...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 w-full bg-white border-t border-slate-100 py-3 px-6 flex justify-between items-center z-[100] max-w-md left-1/2 -translate-x-1/2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <a href="#" class="flex flex-col items-center gap-1 text-cyan-600 cursor-pointer w-16">
+            <i class="fa-solid fa-chart-pie text-xl"></i>
+            <span class="text-[10px] font-bold">Painel</span>
+        </a>
+        <a href="agenda_instrutor.html" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 cursor-pointer w-16">
+            <i class="fa-regular fa-calendar text-xl"></i>
+            <span class="text-[10px]">Agenda</span>
+        </a>
+        <a href="#" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 cursor-pointer w-16">
+            <i class="fa-solid fa-car text-xl"></i>
+            <span class="text-[10px]">Alunos</span>
+        </a>
+        <a href="perfil_instrutor.html" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 cursor-pointer w-16">
+            <i class="fa-regular fa-user text-xl"></i>
+            <span class="text-[10px]">Perfil</span>
+        </a>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://gfazevzzvgafmlnmkgjo.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmYXpldnp6dmdhZm1sbm1rZ2pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDE3MjMsImV4cCI6MjA4MTUxNzcyM30.00SUzPZP0-YCxwaynA0Eu8lBM2O7E4Sp52lwLVACRSo';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let periodoAtual = 'semanal'; 
+        let chartInstance = null;
+        let todosAgendamentos = [];
+
+        async function carregarDashboard() {
+            // 1. Quem sou eu?
+            const userStr = localStorage.getItem('usuario_logado');
+            if (!userStr) { window.location.href = 'index.html'; return; }
+            const usuario = JSON.parse(userStr);
+            document.getElementById('nome-ola').innerText = `Olá, ${usuario.nome.split(' ')[0]} 👋`;
+
+            // 2. Busca Instrutor
+            const { data: instrutor } = await supabaseClient
+                .from('instrutores')
+                .select('*')
+                .eq('usuario_id', usuario.id)
+                .single();
+
+            if (!instrutor) return;
+
+            document.getElementById('txt-nota').innerText = instrutor.nota ? instrutor.nota.toFixed(1) : "5.0";
+
+            // 3. Busca Agendamentos (Com telefone do aluno)
+            const { data: agendamentos, error } = await supabaseClient
+                .from('agendamentos')
+                .select('*, usuarios(nome, telefone)') 
+                .eq('instrutor_id', instrutor.id)
+                .order('data_hora', { ascending: true });
+
+            if(error) console.error(error);
+
+            todosAgendamentos = agendamentos || [];
+            
+            // 4. Renderiza TUDO
+            atualizarGraficoEstatatisticas();
+            renderizarListaOperacional();
+        }
+
+        // --- PARTE 1: GRÁFICOS E FINANCEIRO (NOVO) ---
+        function mudarPeriodo(periodo) {
+            periodoAtual = periodo;
+            const btnSemanal = document.getElementById('btn-semanal');
+            const btnMensal = document.getElementById('btn-mensal');
+            
+            if(periodo === 'semanal') {
+                btnSemanal.className = "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all bg-cyan-500 text-white shadow-lg";
+                btnMensal.className = "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all text-slate-400 hover:text-white";
+            } else {
+                btnMensal.className = "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all bg-cyan-500 text-white shadow-lg";
+                btnSemanal.className = "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all text-slate-400 hover:text-white";
+            }
+            atualizarGraficoEstatatisticas();
+        }
+
+        function atualizarGraficoEstatatisticas() {
+            const hoje = new Date();
+            let labels = [];
+            let valores = [];
+            let faturamentoTotal = 0;
+            let aulasConfirmadasCount = 0;
+
+            if (periodoAtual === 'semanal') {
+                // Últimos 7 dias
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(hoje.getDate() - i);
+                    const diaStr = d.toLocaleDateString('pt-BR', { weekday: 'short' });
+                    
+                    const valorDia = todosAgendamentos.filter(a => {
+                        const dataAg = new Date(a.data_hora);
+                        return dataAg.getDate() === d.getDate() && 
+                               dataAg.getMonth() === d.getMonth() &&
+                               (a.status === 'confirmado' || a.status === 'finalizada');
+                    }).reduce((acc, curr) => acc + curr.valor_aula, 0);
+
+                    labels.push(diaStr);
+                    valores.push(valorDia);
+                    faturamentoTotal += valorDia;
+                }
+            } else {
+                // Mensal simplificado
+                labels = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'];
+                valores = [0, 0, 0, 0]; 
+                
+                faturamentoTotal = todosAgendamentos.filter(a => {
+                    const dataAg = new Date(a.data_hora);
+                    return dataAg.getMonth() === hoje.getMonth() && (a.status === 'confirmado' || a.status === 'finalizada');
+                }).reduce((acc, curr) => acc + curr.valor_aula, 0);
+                
+                // Distribuição visual (mockup para demo)
+                if(faturamentoTotal > 0) valores = [faturamentoTotal*0.1, faturamentoTotal*0.4, faturamentoTotal*0.3, faturamentoTotal*0.2];
+            }
+
+            // Conta total de aulas confirmadas/finalizadas da lista inteira
+            aulasConfirmadasCount = todosAgendamentos.filter(a => a.status === 'confirmado' || a.status === 'finalizada').length;
+
+            document.getElementById('txt-faturamento').innerText = faturamentoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            document.getElementById('txt-total-aulas').innerText = aulasConfirmadasCount;
+
+            // Renderiza Gráfico
+            const ctx = document.getElementById('graficoFaturamento').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+            gradient.addColorStop(0, '#22d3ee'); 
+            gradient.addColorStop(1, '#0891b2'); 
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{ data: valores, backgroundColor: gradient, borderRadius: 4, barThickness: 10 }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { display: false },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 9 } } }
+                    }
+                }
+            });
+        }
+
+        // --- PARTE 2: LISTA OPERACIONAL (RESTAURADA) ---
+        function renderizarListaOperacional() {
+            const lista = document.getElementById('lista-agenda');
+            lista.innerHTML = ''; 
+
+            if (todosAgendamentos.length === 0) {
+                lista.innerHTML = `<p class="text-center text-slate-400 text-sm py-8">Nenhuma solicitação.</p>`;
+                return;
+            }
+
+            todosAgendamentos.forEach(item => {
+                const dataObj = new Date(item.data_hora);
+                const dia = dataObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+                const hora = dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                const nomeAluno = item.usuarios ? item.usuarios.nome : "Aluno";
+                const telAluno = (item.usuarios && item.usuarios.telefone) ? item.usuarios.telefone : null;
+                const localAula = item.local_aula || 'Local a definir';
+
+                // Botão Zap
+                let btnZap = '';
+                if(telAluno) {
+                    const numLimpo = telAluno.replace(/\D/g, '');
+                    btnZap = `<a href="https://wa.me/55${numLimpo}" target="_blank" class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center hover:bg-green-500 hover:text-white transition-colors"><i class="fa-brands fa-whatsapp"></i></a>`;
+                }
+
+                let areaAcao = '';
+
+                // Lógica de Botões (A vital!)
+                if (item.status === 'pendente') {
+                    areaAcao = `
+                        <div class="flex gap-2 mt-3 justify-end border-t border-slate-50 pt-3">
+                            <button onclick="mudarStatus(${item.id}, 'recusado')" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">Recusar</button>
+                            <button onclick="mudarStatus(${item.id}, 'confirmado')" class="px-3 py-1.5 rounded-lg bg-cyan-500 text-xs font-bold text-white hover:bg-cyan-400 shadow-md transition-all">Aceitar</button>
+                        </div>`;
+                } else if (item.status === 'confirmado') {
+                    areaAcao = `
+                        <div class="flex gap-2 mt-3 justify-between items-center border-t border-slate-50 pt-3">
+                            <span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase"><i class="fa-solid fa-check"></i> Confirmado</span>
+                            <button onclick="mudarStatus(${item.id}, 'finalizada')" class="px-4 py-1.5 rounded-lg bg-slate-800 text-xs font-bold text-white hover:bg-black shadow-md transition-all">
+                                <i class="fa-solid fa-flag-checkered mr-1"></i> Finalizar
+                            </button>
+                        </div>`;
+                } else if (item.status === 'finalizada') {
+                    let feedback = item.nota_aluno 
+                        ? `<span class="text-orange-400"><i class="fa-solid fa-star"></i> ${item.nota_aluno}</span>` 
+                        : `<span class="text-slate-400">Aguardando avaliação</span>`;
+                    areaAcao = `
+                        <div class="text-right mt-2 pt-2 border-t border-slate-50 flex justify-between items-center text-xs font-bold">
+                            <span class="text-slate-500 uppercase">Finalizada</span>
+                            ${feedback}
+                        </div>`;
+                } else {
+                     areaAcao = `<div class="text-right mt-1"><span class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold uppercase">Recusado</span></div>`;
+                }
+
+                const card = `
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 transition-all hover:shadow-md">
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-3">
+                            <div class="flex flex-col items-center justify-center w-12 h-12 bg-slate-100 rounded-lg border border-slate-200">
+                                <span class="text-xs font-bold text-slate-500 uppercase">${dia.split(' ')[1]}</span>
+                                <span class="text-lg font-bold text-slate-800">${dia.split(' ')[0]}</span>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <h4 class="font-bold text-slate-800 text-sm">${nomeAluno}</h4>
+                                    ${btnZap}
+                                </div>
+                                <p class="text-[10px] text-slate-500 mt-1"><i class="fa-solid fa-location-dot text-cyan-500"></i> ${localAula}</p>
+                            </div>
+                        </div>
+                        <span class="block font-bold text-cyan-600 text-sm">R$ ${(item.valor_aula || 0).toFixed(2)}</span>
+                    </div>
+                    ${areaAcao}
+                </div>`;
+                lista.innerHTML += card;
+            });
+        }
+
+        async function mudarStatus(id, novoStatus) {
+            const btn = event.target;
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i>';
+            const { error } = await supabaseClient.from('agendamentos').update({ status: novoStatus }).eq('id', id);
+            if (error) alert("Erro: " + error.message);
+            else carregarDashboard();
+        }
+
+        carregarDashboard();
+    </script>
+</body>
+</html>

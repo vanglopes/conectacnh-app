@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finalizar Cadastro - ConectaCNH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.font-serif-custom { font-family: 'Georgia', serif; }</style>
+</head>
+<body class="bg-slate-900 text-white flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-lg my-10">
+        <div class="mb-6 flex items-center gap-4">
+            <a href="index.html" class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold">Criar conta</h1>
+                <p class="text-slate-400 text-sm">Preencha os dados para começar</p>
+            </div>
+        </div>
+
+        <div class="bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
+            <div class="space-y-4">
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Tipo de Conta</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="selecionarTipo('aluno')" id="btn-aluno" class="border border-cyan-500 bg-cyan-500/20 text-cyan-400 py-2 rounded-lg font-bold transition-colors">Aluno</button>
+                        <button onclick="selecionarTipo('instrutor')" id="btn-instrutor" class="border border-slate-600 text-slate-400 py-2 rounded-lg font-bold hover:bg-slate-700 transition-colors">Instrutor</button>
+                    </div>
+                    <p id="aviso-bloqueio" class="hidden text-[10px] text-slate-500 mt-1 text-center">
+                        <i class="fa-solid fa-lock"></i> O tipo de conta foi definido na tela anterior.
+                    </p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Nome Completo</label>
+                    <input type="text" id="nome" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none transition-colors">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">E-mail</label>
+                    <input type="email" id="email" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none transition-colors">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Crie uma Senha</label>
+                    <input type="password" id="senha" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none transition-colors">
+                </div>
+
+                <div id="area-instrutor" class="hidden border-t border-slate-700 pt-4 mt-4 space-y-4">
+                    <p class="text-sm font-bold text-cyan-400 mb-2">Detalhes Profissionais</p>
+                    
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Categorias Atendidas</label>
+                        <div class="flex flex-wrap gap-2">
+                            <label class="flex items-center gap-2 bg-slate-900 px-3 py-1 rounded border border-slate-700 cursor-pointer hover:border-cyan-500">
+                                <input type="checkbox" name="cat" value="A" class="accent-cyan-500"> A (Moto)
+                            </label>
+                            <label class="flex items-center gap-2 bg-slate-900 px-3 py-1 rounded border border-slate-700 cursor-pointer hover:border-cyan-500">
+                                <input type="checkbox" name="cat" value="B" class="accent-cyan-500"> B (Carro)
+                            </label>
+                            <label class="flex items-center gap-2 bg-slate-900 px-3 py-1 rounded border border-slate-700 cursor-pointer hover:border-cyan-500">
+                                <input type="checkbox" name="cat" value="C" class="accent-cyan-500"> C
+                            </label>
+                            <label class="flex items-center gap-2 bg-slate-900 px-3 py-1 rounded border border-slate-700 cursor-pointer hover:border-cyan-500">
+                                <input type="checkbox" name="cat" value="D" class="accent-cyan-500"> D
+                            </label>
+                            <label class="flex items-center gap-2 bg-slate-900 px-3 py-1 rounded border border-slate-700 cursor-pointer hover:border-cyan-500">
+                                <input type="checkbox" name="cat" value="E" class="accent-cyan-500"> E
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Veículo / Transmissão</label>
+                        <div class="flex flex-wrap gap-2">
+                            <label class="flex items-center gap-2 bg-slate-900 px-3 py-1 rounded border border-slate-700 cursor-pointer hover:border-cyan-500">
+                                <input type="checkbox" name="cambio" value="manual" class="accent-cyan-500"> Manual
+                            </label>
+                            <label class="flex items-center gap-2 bg-slate-900 px-3 py-1 rounded border border-slate-700 cursor-pointer hover:border-cyan-500">
+                                <input type="checkbox" name="cambio" value="automatico" class="accent-cyan-500"> Automático / Scooter
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Serviços</label>
+                        <div class="flex flex-col gap-2">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="servico" value="pratica" checked class="accent-cyan-500"> Aulas Práticas
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="servico" value="teorica" class="accent-cyan-500"> Aulas Teóricas / Legislação
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer mt-1">
+                                <input type="checkbox" id="veiculo_proprio" class="accent-green-500"> 
+                                <span class="text-green-400 text-sm">Aceito dar aula no veículo do aluno (Desconto)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="cadastrar()" id="btn-cadastrar" class="w-full bg-cyan-500 hover:bg-cyan-400 text-white font-bold py-3.5 rounded-xl shadow-lg transition-colors mt-6">
+                    Confirmar Cadastro
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://gfazevzzvgafmlnmkgjo.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmYXpldnp6dmdhZm1sbm1rZ2pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDE3MjMsImV4cCI6MjA4MTUxNzcyM30.00SUzPZP0-YCxwaynA0Eu8lBM2O7E4Sp52lwLVACRSo';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let tipoConta = 'aluno';
+
+        window.onload = function() {
+            const params = new URLSearchParams(window.location.search);
+            const emailURL = params.get('email');
+            const nomeURL = params.get('nome');
+            const tipoURL = params.get('tipo');
+
+            // 1. Aplica a seleção vinda da URL
+            if(tipoURL) {
+                selecionarTipo(tipoURL);
+                
+                // --- AQUI COMEÇA A BLINDAGEM ---
+                const btnAluno = document.getElementById('btn-aluno');
+                const btnInstrutor = document.getElementById('btn-instrutor');
+                
+                btnAluno.disabled = true;
+                btnInstrutor.disabled = true;
+                
+                if(tipoURL === 'aluno') {
+                    btnInstrutor.classList.add('opacity-30', 'cursor-not-allowed');
+                    btnAluno.classList.add('cursor-not-allowed'); 
+                } else {
+                    btnAluno.classList.add('opacity-30', 'cursor-not-allowed');
+                    btnInstrutor.classList.add('cursor-not-allowed');
+                }
+
+                document.getElementById('aviso-bloqueio').classList.remove('hidden');
+                // --- FIM DA BLINDAGEM ---
+            }
+
+            if(emailURL) {
+                document.getElementById('email').value = emailURL;
+                document.getElementById('senha').focus();
+            }
+            if(nomeURL) {
+                document.getElementById('nome').value = nomeURL;
+            }
+        };
+
+        function selecionarTipo(tipo) {
+            tipoConta = tipo;
+            const btnAluno = document.getElementById('btn-aluno');
+            const btnInstrutor = document.getElementById('btn-instrutor');
+            const areaInstrutor = document.getElementById('area-instrutor');
+
+            if (tipo === 'aluno') {
+                btnAluno.className = "border border-cyan-500 bg-cyan-500/20 text-cyan-400 py-2 rounded-lg font-bold transition-colors w-full";
+                btnInstrutor.className = "border border-slate-600 text-slate-400 py-2 rounded-lg font-bold hover:bg-slate-700 transition-colors w-full";
+                areaInstrutor.classList.add('hidden');
+            } else {
+                btnInstrutor.className = "border border-cyan-500 bg-cyan-500/20 text-cyan-400 py-2 rounded-lg font-bold transition-colors w-full";
+                btnAluno.className = "border border-slate-600 text-slate-400 py-2 rounded-lg font-bold hover:bg-slate-700 transition-colors w-full";
+                areaInstrutor.classList.remove('hidden');
+            }
+        }
+
+        function getCheckedValues(name) {
+            return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(el => el.value);
+        }
+
+        async function cadastrar() {
+            const nome = document.getElementById('nome').value;
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            const btn = document.getElementById('btn-cadastrar');
+
+            if (!nome || !email || !senha) { alert("Preencha todos os campos!"); return; }
+
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Criando...';
+            btn.disabled = true;
+
+            // 1. Cria Usuário
+            const { data: user, error } = await supabaseClient
+                .from('usuarios')
+                .insert([{ nome, email, senha, tipo: tipoConta }])
+                .select()
+                .single();
+
+            if (error) {
+                alert("Erro ao criar usuário: " + error.message);
+                btn.innerText = "Criar Conta";
+                btn.disabled = false;
+                return;
+            }
+
+            // 2. Se for INSTRUTOR, cria perfil (AGORA COM VERIFICAÇÃO DE ERRO)
+            if (tipoConta === 'instrutor') {
+                const categorias = getCheckedValues('cat');
+                const cambios = getCheckedValues('cambio');
+                const servicos = getCheckedValues('servico');
+                const aceitaVeiculoProprio = document.getElementById('veiculo_proprio').checked;
+
+                console.log("Tentando criar perfil de instrutor para ID:", user.id);
+
+                const { data: perfil, error: erroInstrutor } = await supabaseClient.from('instrutores').insert([{
+                    nome: nome,
+                    status: 'pendente',
+                    preco_aula: 80.00,
+                    foto_url: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+                    endereco: 'Localização a definir',
+                    categoria: 'Autônomo',
+                    categorias: categorias.length ? categorias : ['B'],
+                    tipos_servico: servicos,
+                    cambio: cambios,
+                    atende_veiculo_proprio: aceitaVeiculoProprio,
+                    nota: 5.0,
+                    avaliacoes_count: 0,
+                    usuario_id: user.id
+                }]).select();
+
+                // SE DER ERRO AQUI, É PORQUE FALTAM COLUNAS NO BANCO
+                if (erroInstrutor) {
+                    console.error("Erro Supabase:", erroInstrutor);
+                    alert("ERRO CRÍTICO: " + erroInstrutor.message + "\n\nO banco de dados rejeitou o cadastro. Verifique se as colunas (usuario_id, categorias, etc) foram criadas.");
+                    
+                    // SEGURANÇA: Apaga o usuário criado para não travar o email
+                    await supabaseClient.from('usuarios').delete().eq('id', user.id);
+                    
+                    btn.innerText = "Tentar Novamente";
+                    btn.disabled = false;
+                    return;
+                }
+            }
+
+            // 3. Sucesso (Só chega aqui se tudo deu certo)
+            localStorage.setItem('usuario_logado', JSON.stringify(user));
+            alert("Cadastro realizado com sucesso!");
+            
+            if(tipoConta === 'instrutor') {
+                window.location.href = 'aguardando_aprovacao.html'; 
+            } else {
+                window.location.href = 'home.html';
+            }
+        }
+    </script>
+</body>
+</html>

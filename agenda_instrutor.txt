@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Agenda - ConectaCNH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style> .font-serif-custom { font-family: 'Georgia', serif; } </style>
+</head>
+<body class="bg-slate-50 text-slate-900 pb-24">
+
+    <div class="bg-white p-4 pt-6 shadow-sm sticky top-0 z-10 flex items-center justify-between">
+        <h1 class="text-xl font-bold text-slate-900">Agenda</h1>
+        <div class="flex items-center gap-2">
+            <button onclick="mudarMes(-1)" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200"><i class="fa-solid fa-chevron-left text-xs"></i></button>
+            <span id="mes-ano-titulo" class="font-bold text-sm min-w-[100px] text-center">...</span>
+            <button onclick="mudarMes(1)" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+        </div>
+    </div>
+
+    <div class="p-4">
+        <div class="grid grid-cols-7 text-center mb-2">
+            <span class="text-[10px] font-bold text-slate-400 uppercase">D</span>
+            <span class="text-[10px] font-bold text-slate-400 uppercase">S</span>
+            <span class="text-[10px] font-bold text-slate-400 uppercase">T</span>
+            <span class="text-[10px] font-bold text-slate-400 uppercase">Q</span>
+            <span class="text-[10px] font-bold text-slate-400 uppercase">Q</span>
+            <span class="text-[10px] font-bold text-slate-400 uppercase">S</span>
+            <span class="text-[10px] font-bold text-slate-400 uppercase">S</span>
+        </div>
+        
+        <div id="grid-dias" class="grid grid-cols-7 gap-2 text-center">
+            </div>
+    </div>
+
+    <div class="px-6 mt-4">
+        <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+            <i class="fa-regular fa-clock text-cyan-500"></i> Aulas em <span id="lbl-dia-selecionado">...</span>
+        </h3>
+        <div id="lista-aulas-dia" class="space-y-3">
+            <p class="text-xs text-slate-400 py-4 text-center">Selecione um dia para ver os detalhes.</p>
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 w-full bg-white border-t border-slate-100 py-3 px-6 flex justify-between items-center z-[100] max-w-md left-1/2 -translate-x-1/2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <a href="dashboard_instrutor.html" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 cursor-pointer w-16">
+            <i class="fa-solid fa-chart-pie text-xl"></i>
+            <span class="text-[10px]">Painel</span>
+        </a>
+        <a href="#" class="flex flex-col items-center gap-1 text-cyan-600 cursor-pointer w-16">
+            <i class="fa-regular fa-calendar text-xl"></i>
+            <span class="text-[10px] font-bold">Agenda</span>
+        </a>
+        <a href="#" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 cursor-pointer w-16">
+            <i class="fa-solid fa-car text-xl"></i>
+            <span class="text-[10px]">Alunos</span>
+        </a>
+        <a href="perfil_instrutor.html" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 cursor-pointer w-16">
+            <i class="fa-regular fa-user text-xl"></i>
+            <span class="text-[10px]">Perfil</span>
+        </a>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://gfazevzzvgafmlnmkgjo.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmYXpldnp6dmdhZm1sbm1rZ2pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDE3MjMsImV4cCI6MjA4MTUxNzcyM30.00SUzPZP0-YCxwaynA0Eu8lBM2O7E4Sp52lwLVACRSo';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let dataReferencia = new Date();
+        let agendamentosCache = [];
+
+        window.onload = async function() {
+            const userStr = localStorage.getItem('usuario_logado');
+            if (!userStr) { window.location.href = 'index.html'; return; }
+            const usuario = JSON.parse(userStr);
+
+            const { data: instrutor } = await supabaseClient.from('instrutores').select('id').eq('usuario_id', usuario.id).single();
+            if(!instrutor) return;
+
+            // Busca TODOS os agendamentos futuros e passados
+            const { data: agendamentos } = await supabaseClient
+                .from('agendamentos')
+                .select('*, usuarios(nome)')
+                .eq('instrutor_id', instrutor.id);
+
+            agendamentosCache = agendamentos || [];
+            renderizarCalendario();
+        };
+
+        function mudarMes(delta) {
+            dataReferencia.setMonth(dataReferencia.getMonth() + delta);
+            renderizarCalendario();
+        }
+
+        function renderizarCalendario() {
+            const ano = dataReferencia.getFullYear();
+            const mes = dataReferencia.getMonth();
+            
+            // Título
+            const nomeMes = dataReferencia.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            document.getElementById('mes-ano-titulo').innerText = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+
+            // Lógica do Grid
+            const primeiroDiaMes = new Date(ano, mes, 1);
+            const ultimoDiaMes = new Date(ano, mes + 1, 0);
+            const diasNoMes = ultimoDiaMes.getDate();
+            const diaSemanaInicio = primeiroDiaMes.getDay(); // 0 = Domingo
+
+            const grid = document.getElementById('grid-dias');
+            grid.innerHTML = '';
+
+            // Espaços vazios antes do dia 1
+            for (let i = 0; i < diaSemanaInicio; i++) {
+                grid.innerHTML += `<div></div>`;
+            }
+
+            // Dias do mês
+            for (let dia = 1; dia <= diasNoMes; dia++) {
+                // Verifica se tem aula neste dia
+                const temAula = agendamentosCache.some(a => {
+                    const d = new Date(a.data_hora);
+                    return d.getDate() === dia && d.getMonth() === mes && d.getFullYear() === ano && a.status !== 'recusado';
+                });
+
+                let classeExtra = temAula ? "bg-red-50 text-red-600 font-bold border-red-100" : "bg-white text-slate-600 hover:bg-slate-50";
+                
+                // Marca Hoje
+                const hoje = new Date();
+                if (dia === hoje.getDate() && mes === hoje.getMonth() && ano === hoje.getFullYear()) {
+                    classeExtra = "bg-cyan-500 text-white font-bold shadow-lg shadow-cyan-500/30";
+                }
+
+                // Bolinha indicadora
+                const bolinha = temAula ? `<div class="w-1.5 h-1.5 bg-red-500 rounded-full mx-auto mt-1"></div>` : '';
+
+                grid.innerHTML += `
+                    <div onclick="verDia(${dia}, ${mes}, ${ano})" class="cursor-pointer h-12 rounded-xl flex flex-col items-center justify-center border border-transparent transition-all ${classeExtra}">
+                        <span class="text-sm">${dia}</span>
+                        ${bolinha}
+                    </div>
+                `;
+            }
+        }
+
+        function verDia(dia, mes, ano) {
+            document.getElementById('lbl-dia-selecionado').innerText = `${dia}/${mes+1}/${ano}`;
+            const lista = document.getElementById('lista-aulas-dia');
+            lista.innerHTML = '';
+
+            const aulasDoDia = agendamentosCache.filter(a => {
+                const d = new Date(a.data_hora);
+                return d.getDate() === dia && d.getMonth() === mes && d.getFullYear() === ano && a.status !== 'recusado';
+            }).sort((a,b) => new Date(a.data_hora) - new Date(b.data_hora));
+
+            if (aulasDoDia.length === 0) {
+                lista.innerHTML = `<p class="text-xs text-slate-400 py-2">Dia livre! Nenhuma aula marcada.</p>`;
+                return;
+            }
+
+            aulasDoDia.forEach(aula => {
+                const hora = new Date(aula.data_hora).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+                const nome = aula.usuarios ? aula.usuarios.nome : 'Aluno';
+                
+                lista.innerHTML += `
+                    <div class="bg-white p-3 rounded-xl border border-slate-100 shadow-sm flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="text-cyan-600 font-bold text-sm bg-cyan-50 px-2 py-1 rounded">${hora}</div>
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">${nome}</p>
+                                <p class="text-[10px] text-slate-400 uppercase">${aula.status}</p>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+                    </div>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>

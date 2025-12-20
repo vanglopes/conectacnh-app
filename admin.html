@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Admin - Área Restrita</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        .font-serif-custom { font-family: 'Georgia', serif; }
+        /* Esconder scrollbar mas manter funcionalidade */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-900 text-white pb-24">
+
+    <div id="security-lock" class="fixed inset-0 bg-slate-950 z-[999] flex flex-col items-center justify-center">
+        <div class="text-center p-6 max-w-sm w-full">
+            <div class="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                <i class="fa-solid fa-lock text-2xl text-red-500"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-2">Área Restrita</h2>
+            <p class="text-slate-400 text-sm mb-6">Este painel é exclusivo para administração.</p>
+            
+            <input type="password" id="admin-password" placeholder="Senha Mestre" 
+                class="w-full bg-slate-800 border border-slate-700 text-white px-4 py-3 rounded-xl mb-4 focus:border-cyan-500 outline-none transition-colors text-center font-bold tracking-widest text-lg">
+            
+            <button onclick="verificarAcesso()" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-cyan-900/20">
+                DESBLOQUEAR ACESSO
+            </button>
+            <p id="msg-erro" class="text-red-500 text-xs mt-3 hidden">Senha incorreta!</p>
+        </div>
+    </div>
+
+    <div class="w-full max-w-md mx-auto min-h-screen relative bg-slate-900">
+        
+        <header class="p-4 flex items-center justify-between pt-6 border-b border-slate-800 mb-4 sticky top-0 bg-slate-900/95 backdrop-blur z-50">
+            <a href="home.html" class="text-slate-400 hover:text-white transition-colors w-8">
+                <i class="fa-solid fa-arrow-left text-xl"></i>
+            </a>
+            <h1 class="text-xl font-bold tracking-wide text-cyan-400">
+                Painel Admin
+            </h1>
+            <div class="w-8 flex justify-end">
+                <span class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full hidden" id="counter-badge">0</span>
+            </div>
+        </header>
+
+        <div class="px-4">
+            <div class="flex justify-between items-end mb-4">
+                <h2 class="text-sm text-slate-400 font-semibold uppercase tracking-wider">Solicitações Pendentes</h2>
+                <button onclick="carregarPendentes()" class="text-xs text-cyan-400 hover:text-cyan-300">
+                    <i class="fa-solid fa-rotate-right"></i> Atualizar
+                </button>
+            </div>
+
+            <div id="lista-pendentes" class="flex flex-col gap-4 min-h-[300px]">
+                <div class="animate-pulse flex flex-col gap-4">
+                    <div class="h-48 bg-slate-800 rounded-2xl border border-slate-700"></div>
+                    <div class="h-48 bg-slate-800 rounded-2xl border border-slate-700"></div>
+                </div>
+            </div>
+            
+            <div id="empty-state" class="hidden flex flex-col items-center justify-center mt-20 opacity-50">
+                <div class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-check-double text-3xl text-green-500"></i>
+                </div>
+                <h3 class="text-white font-bold text-lg">Tudo limpo!</h3>
+                <p class="text-slate-400 text-sm">Nenhuma aprovação pendente.</p>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- 1. LÓGICA DE SEGURANÇA (Senha) ---
+        function verificarAcesso() {
+            const senhaInput = document.getElementById('admin-password');
+            const msgErro = document.getElementById('msg-erro');
+            
+            // ⚠️ DEFINE SUA SENHA AQUI:
+            const SENHA_CORRETA = "Master@120603"; 
+
+            if (senhaInput.value === SENHA_CORRETA) {
+                // Sucesso: Remove a trava
+                const lock = document.getElementById('security-lock');
+                lock.style.opacity = '0';
+                lock.style.transition = 'opacity 0.5s';
+                setTimeout(() => lock.remove(), 500);
+                
+                // Salva na sessão (não pede senha de novo se der F5)
+                sessionStorage.setItem('admin_logged', 'true');
+                
+                // Carrega os dados
+                carregarPendentes();
+            } else {
+                // Erro
+                msgErro.classList.remove('hidden');
+                senhaInput.classList.add('border-red-500');
+                setTimeout(() => {
+                    msgErro.classList.add('hidden');
+                    senhaInput.classList.remove('border-red-500');
+                }, 3000);
+            }
+        }
+
+        // Verifica se já estava logado antes de mostrar a trava
+        if(sessionStorage.getItem('admin_logged') === 'true') {
+            document.getElementById('security-lock').style.display = 'none';
+            carregarPendentes(); // Carrega direto
+        } else {
+            // Se não estiver logado, garante que a trava está visível
+            document.getElementById('security-lock').style.display = 'flex';
+        }
+
+        // --- 2. CONFIGURAÇÃO DO SUPABASE ---
+        const SUPABASE_URL = 'https://gfazevzzvgafmlnmkgjo.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmYXpldnp6dmdhZm1sbm1rZ2pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDE3MjMsImV4cCI6MjA4MTUxNzcyM30.00SUzPZP0-YCxwaynA0Eu8lBM2O7E4Sp52lwLVACRSo';
+        
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- 3. FUNÇÃO: CARREGAR LISTA ---
+        async function carregarPendentes() {
+            // Só carrega se o cadeado não existir ou estiver invisível
+            if(document.getElementById('security-lock') && document.getElementById('security-lock').style.display !== 'none') return;
+
+            const lista = document.getElementById('lista-pendentes');
+            const badge = document.getElementById('counter-badge');
+            const emptyState = document.getElementById('empty-state');
+
+            // Busca no banco apenas quem tem status 'pendente'
+            const { data: instrutores, error } = await supabaseClient
+                .from('instrutores')
+                .select('*')
+                .eq('status', 'pendente');
+
+            if (error) {
+                console.error('Erro ao buscar:', error);
+                // Se der erro de conexão, não mostramos nada crítico, só aviso
+                lista.innerHTML = `<div class="text-red-400 text-center text-xs mt-4">Erro de conexão.</div>`;
+                return;
+            }
+
+            lista.innerHTML = ''; // Limpa loading
+
+            if (instrutores && instrutores.length > 0) {
+                badge.innerText = instrutores.length;
+                badge.classList.remove('hidden'); 
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+
+                instrutores.forEach(instrutor => {
+                    const foto = instrutor.foto_url ? instrutor.foto_url : 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+                    
+                    const cardHTML = `
+                    <div class="bg-slate-800 rounded-2xl overflow-hidden shadow-xl border border-slate-700 relative transition-all duration-300" id="card-${instrutor.id}">
+                        <div class="p-4">
+                            <div class="flex items-start gap-4 mb-4">
+                                <div class="w-16 h-16 rounded-full bg-slate-700 overflow-hidden border-2 border-slate-600 flex-shrink-0">
+                                    <img src="${foto}" class="w-full h-full object-cover">
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-lg text-white leading-tight">${instrutor.nome}</h3>
+                                    <p class="text-sm text-slate-400 flex items-center gap-1 mt-1">
+                                        <i class="fa-solid fa-location-dot text-xs"></i> 
+                                        ${instrutor.cidade || 'Local não informado'}
+                                    </p>
+                                    <span class="inline-block mt-2 text-[10px] bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded border border-yellow-500/30">
+                                        Aguardando Aprovação
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-900/50 rounded-lg p-3 mb-4 border border-slate-700/50">
+                                <div class="flex justify-between items-center mb-2 border-b border-slate-800 pb-2">
+                                    <span class="text-xs text-slate-400">Categoria</span>
+                                    <span class="text-xs font-bold text-white">${instrutor.categoria || 'Não def.'}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs text-slate-400">CNH</span>
+                                    <span class="text-xs font-mono text-cyan-300 select-all">${instrutor.cnh || '---'}</span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <button onclick="rejeitar('${instrutor.id}')" class="py-2.5 rounded-xl bg-slate-700 hover:bg-red-900/30 text-red-400 hover:text-red-300 border border-slate-600 hover:border-red-800 transition-all text-sm font-bold flex items-center justify-center gap-2 group">
+                                    <i class="fa-solid fa-xmark group-hover:scale-110 transition-transform"></i> Rejeitar
+                                </button>
+                                <button onclick="aprovar('${instrutor.id}')" class="py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-lg shadow-cyan-900/20 transition-all text-sm font-bold flex items-center justify-center gap-2 group">
+                                    <i class="fa-solid fa-check group-hover:scale-110 transition-transform"></i> Aprovar
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+                    lista.innerHTML += cardHTML;
+                });
+            } else {
+                badge.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+            }
+        }
+
+        // --- 4. FUNÇÃO: APROVAR ---
+        async function aprovar(id) {
+            if(!confirm("Tem certeza que deseja ativar este instrutor no App?")) return;
+
+            const { error } = await supabaseClient
+                .from('instrutores')
+                .update({ status: 'ativo' })
+                .eq('id', id);
+
+            if (error) {
+                alert('Erro ao aprovar: ' + error.message);
+            } else {
+                const card = document.getElementById('card-' + id);
+                card.innerHTML = `
+                    <div class="h-[240px] flex flex-col items-center justify-center text-center animate-pulse bg-green-900/10">
+                        <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-3 shadow-[0_0_15px_rgba(34,197,94,0.5)]">
+                            <i class="fa-solid fa-check text-3xl text-white"></i>
+                        </div>
+                        <h3 class="text-white font-bold text-lg">Instrutor Ativado!</h3>
+                    </div>`;
+                setTimeout(() => { card.remove(); carregarPendentes(); }, 1500);
+            }
+        }
+
+        // --- 5. FUNÇÃO: REJEITAR ---
+        async function rejeitar(id) {
+            const motivo = prompt("Digite o motivo da rejeição:");
+            if (motivo === null) return; 
+
+            const { error } = await supabaseClient
+                .from('instrutores')
+                .update({ status: 'rejeitado' })
+                .eq('id', id);
+
+            if (error) {
+                alert('Erro ao rejeitar: ' + error.message);
+            } else {
+                const card = document.getElementById('card-' + id);
+                card.innerHTML = `
+                    <div class="h-[240px] flex flex-col items-center justify-center text-center bg-red-900/10">
+                        <div class="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mb-3">
+                            <i class="fa-solid fa-xmark text-3xl text-white"></i>
+                        </div>
+                        <h3 class="text-white font-bold text-lg">Cadastro Rejeitado</h3>
+                    </div>`;
+                setTimeout(() => { card.remove(); carregarPendentes(); }, 1500);
+            }
+        }
+    </script>
+</body>
+</html>
