@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#06b6d4">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <script src="https://cdn.tailwindcss.com"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home - ConectaCNH</title>
@@ -29,13 +33,10 @@
 
         <div class="px-4 mt-2 mb-6">
             <form action="resultados.html" method="GET" class="bg-white rounded-xl flex items-center px-4 py-3 shadow-lg">
-                <button type="submit" class="text-slate-400 text-lg hover:text-cyan-500 transition-colors focus:outline-none" aria-label="Buscar">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                </button>
-                
+                <i class="fa-solid fa-magnifying-glass text-slate-400 text-lg"></i>
                 <input type="text" name="q" placeholder="Pesquise instrutores..." 
                        class="ml-3 w-full text-sm text-slate-700 placeholder-slate-400 outline-none bg-transparent">
-            </form>
+                <button type="submit" class="hidden">Buscar</button> </form>
         </div>
 
         <div class="flex justify-center gap-6 mb-8 px-4 text-center">
@@ -92,6 +93,7 @@
     </div>
 
     <script>
+        // SUAS CHAVES
         const SUPABASE_URL = 'https://gfazevzzvgafmlnmkgjo.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmYXpldnp6dmdhZm1sbm1rZ2pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NDE3MjMsImV4cCI6MjA4MTUxNzcyM30.00SUzPZP0-YCxwaynA0Eu8lBM2O7E4Sp52lwLVACRSo';
 
@@ -101,6 +103,7 @@
         async function carregarDestaques() {
             const listaContainer = document.getElementById('lista-instrutores');
             
+            // Busca apenas 5 instrutores para a Home (aleatórios ou os melhores avaliados)
             const { data: instrutores, error } = await supabaseClient
                 .from('instrutores')
                 .select('*')
